@@ -987,6 +987,24 @@ static int alvium_get_saturation_params(struct alvium_dev *alvium)
 	return 0;
 }
 
+static int alvium_get_ana_gain_params(struct alvium_dev *alvium)
+{
+	u64 dft_anag, min_anag, max_anag;
+	int ret = 0;
+
+	alvium_read(alvium, REG_BCRM_ANA_GAIN_RW, &dft_anag, &ret);
+	alvium_read(alvium, REG_BCRM_ANA_GAIN_MIN_R, &min_anag, &ret);
+	alvium_read(alvium, REG_BCRM_ANA_GAIN_MAX_R, &max_anag, &ret);
+	if (ret)
+		return ret;
+
+	alvium->dft_ana_gain = dft_anag;
+	alvium->min_ana_gain = min_anag;
+	alvium->max_ana_gain = max_anag;
+
+	return 0;
+}
+
 static int alvium_set_bcm_mode(struct alvium_dev *alvium)
 {
 	int ret = 0;
@@ -1459,6 +1477,20 @@ static int alvium_set_ctrl_vflip(struct alvium_dev *alvium, int val)
 	return 0;
 }
 
+static int alvium_set_ana_gain(struct alvium_dev *alvium, int val)
+{
+	struct device *dev = &alvium->i2c_client->dev;
+	int ret;
+
+	ret = alvium_write_hshake(alvium, REG_BCRM_ANA_GAIN_RW, (u64)val);
+	if (ret) {
+		dev_err(dev, "Fail to set analog gain value reg\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int alvium_get_hw_features_params(struct alvium_dev *alvium)
 {
 	struct device *dev = &alvium->i2c_client->dev;
@@ -1533,6 +1565,12 @@ static int alvium_get_hw_features_params(struct alvium_dev *alvium)
 	ret = alvium_get_saturation_params(alvium);
 	if (ret) {
 		dev_err(dev, "Fail to read saturation regs\n");
+		return ret;
+	}
+
+	ret = alvium_get_ana_gain_params(alvium);
+	if (ret) {
+		dev_err(dev, "Fail to read analog gain regs\n");
 		return ret;
 	}
 
@@ -2071,6 +2109,9 @@ static int alvium_s_ctrl(struct v4l2_ctrl *ctrl)
 	case V4L2_CID_VFLIP:
 		ret = alvium_set_ctrl_vflip(alvium, ctrl->val);
 		break;
+	case V4L2_CID_ANALOGUE_GAIN:
+		ret = alvium_set_ana_gain(alvium, ctrl->val);
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -2215,6 +2256,12 @@ static int alvium_ctrl_init(struct alvium_dev *alvium)
 		ctrls->vflip = v4l2_ctrl_new_std(hdl, ops,
 						 V4L2_CID_VFLIP,
 						 0, 1, 1, 0);
+
+	ctrls->ana_gain = v4l2_ctrl_new_std(hdl, ops,
+					    V4L2_CID_ANALOGUE_GAIN,
+					    alvium->min_ana_gain,
+					    alvium->max_ana_gain, 1,
+					    alvium->dft_ana_gain);
 
 	if (hdl->error) {
 		ret = hdl->error;

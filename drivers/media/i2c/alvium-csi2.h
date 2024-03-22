@@ -179,6 +179,9 @@
 #define REG_BCRM_SHARPNESS_INC_R			REG_BCRM_V4L2_32BIT(0x030c)
 
 #define REG_BCRM_DEVICE_TEMPERATURE_R			REG_BCRM_V4L2_32BIT(0x0310)
+#define REG_BCRM_ANA_GAIN_RW				REG_BCRM_V4L2_64BIT(0x0314)
+#define REG_BCRM_ANA_GAIN_MIN_R				REG_BCRM_V4L2_64BIT(0x031c)
+#define REG_BCRM_ANA_GAIN_MAX_R				REG_BCRM_V4L2_64BIT(0x0324)
 #define REG_BCRM_EXPOSURE_AUTO_MIN_RW			REG_BCRM_V4L2_64BIT(0x0330)
 #define REG_BCRM_EXPOSURE_AUTO_MAX_RW			REG_BCRM_V4L2_64BIT(0x0338)
 #define REG_BCRM_GAIN_AUTO_MIN_RW			REG_BCRM_V4L2_64BIT(0x0340)
@@ -367,6 +370,7 @@ struct alvium_ctrls {
 	struct v4l2_ctrl *sharpness;
 	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vflip;
+	struct v4l2_ctrl *ana_gain;
 };
 
 struct alvium_dev {
@@ -440,6 +444,9 @@ struct alvium_dev {
 	s32 min_sharp;
 	s32 max_sharp;
 	s32 inc_sharp;
+	u64 dft_ana_gain;
+	u64 min_ana_gain;
+	u64 max_ana_gain;
 
 	struct alvium_mode mode;
 
