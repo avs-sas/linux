@@ -2134,6 +2134,7 @@ static int alvium_ctrl_init(struct alvium_dev *alvium)
 	struct v4l2_ctrl_handler *hdl = &ctrls->handler;
 	struct v4l2_fwnode_device_properties props;
 	int min_hblank, max_hblank;
+	int min_vblank, max_vblank;
 	int ret;
 
 	v4l2_ctrl_handler_init(hdl, 32);
@@ -2265,6 +2266,14 @@ static int alvium_ctrl_init(struct alvium_dev *alvium)
 					  max_hblank, 1,
 					  min_hblank);
 	ctrls->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+
+	max_vblank = alvium->img_max_height - alvium->mode.height;
+	min_vblank = alvium->mode.height - alvium->img_min_height;
+	ctrls->vblank = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_VBLANK,
+					  min_vblank,
+					  max_vblank, 1,
+					  min_vblank);
+	ctrls->vblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
 	ctrls->ana_gain = v4l2_ctrl_new_std(hdl, ops,
 					    V4L2_CID_ANALOGUE_GAIN,
