@@ -1682,6 +1682,171 @@ static int alvium_hw_init(struct alvium_dev *alvium)
 	return 0;
 }
 
+/* --------------------------------------------------------------------------
+ * sysfs attributes
+ */
+static ssize_t lane_count_show(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct alvium_dev *alvium = sd_to_alvium(sd);
+
+	return sysfs_emit(buf, "%d\n", alvium->h_sup_csi_lanes);
+}
+static DEVICE_ATTR_RO(lane_count);
+
+static ssize_t device_capabilities_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct alvium_dev *alvium = sd_to_alvium(sd);
+	u64 val = 0;
+
+	val |= (alvium->caps.user_name & 0x1) << 0;
+	val |= (alvium->caps.bcrm & 0x1) << 1;
+	val |= (alvium->caps.gencp & 0x1) << 2;
+	val |= (alvium->caps.reserved1 & 0x1) << 3;
+	val |= (alvium->caps.string_encoding & 0xF) << 4;
+	val |= (alvium->caps.family_name & 0x1) << 8;
+
+	return sysfs_emit(buf, "0x%llx\n", val);
+}
+static DEVICE_ATTR_RO(device_capabilities);
+
+static ssize_t device_guid_show(struct device *dev,
+			 struct device_attribute *attr, char *buf)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct alvium_dev *alvium = sd_to_alvium(sd);
+	u64 val[8];
+	int i, ret = 0;
+
+	/* 64 bytes length */
+	for (i = 0; i < 8; i++)
+		alvium_read(alvium, REG_BCRM_DEVICE_GUID_R + 8 * i,
+			    &val[i], &ret);
+	if (ret)
+		return ret;
+
+	return sysfs_emit(buf, "%s\n", (char *)&val);
+}
+static DEVICE_ATTR_RO(device_guid);
+
+static ssize_t serial_number_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct alvium_dev *alvium = sd_to_alvium(sd);
+	u64 val[8];
+	int i, ret = 0;
+
+	/* 64 bytes length */
+	for (i = 0; i < 8; i++)
+		alvium_read(alvium, REG_BCRM_DEVICE_SERIAL_NUMBER_R + 8 * i,
+			    &val[i], &ret);
+	if (ret)
+		return ret;
+
+	return sysfs_emit(buf, "%s\n", (char *)&val);
+}
+static DEVICE_ATTR_RO(serial_number);
+
+static ssize_t model_name_show(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct alvium_dev *alvium = sd_to_alvium(sd);
+	u64 val[8];
+	int i, ret = 0;
+
+	/* 64 bytes length */
+	for (i = 0; i < 8; i++)
+		alvium_read(alvium, REG_BCRM_DEVICE_MODEL_NAME_R + 8 * i,
+			    &val[i], &ret);
+	if (ret)
+		return ret;
+
+	return sysfs_emit(buf, "%s\n", (char *)&val);
+}
+static DEVICE_ATTR_RO(model_name);
+
+static ssize_t family_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct alvium_dev *alvium = sd_to_alvium(sd);
+	u64 val[8];
+	int i, ret = 0;
+
+	/* 64 bytes length */
+	for (i = 0; i < 8; i++)
+		alvium_read(alvium, REG_BCRM_DEVICE_FAMILY_NAME_R + 8 * i,
+			    &val[i], &ret);
+	if (ret)
+		return ret;
+
+	return sysfs_emit(buf, "%s\n", (char *)&val);
+}
+static DEVICE_ATTR_RO(family_name);
+
+static int alvium_sysfs_add_dev_info(struct alvium_dev *alvium)
+{
+	struct device *dev = &alvium->i2c_client->dev;
+	int ret;
+
+	ret = device_create_file(dev, &dev_attr_device_guid);
+	if (ret) {
+		device_remove_file(dev, &dev_attr_device_guid);
+		return ret;
+	}
+
+	ret = device_create_file(dev, &dev_attr_device_capabilities);
+	if (ret) {
+		device_remove_file(dev, &dev_attr_device_capabilities);
+		return ret;
+	}
+
+	ret = device_create_file(dev, &dev_attr_lane_count);
+	if (ret) {
+		device_remove_file(dev, &dev_attr_lane_count);
+		return ret;
+	}
+
+	ret = device_create_file(dev, &dev_attr_serial_number);
+	if (ret) {
+		device_remove_file(dev, &dev_attr_serial_number);
+		return ret;
+	}
+
+	ret = device_create_file(dev, &dev_attr_model_name);
+	if (ret) {
+		device_remove_file(dev, &dev_attr_model_name);
+		return ret;
+	}
+
+	ret = device_create_file(dev, &dev_attr_family_name);
+	if (ret) {
+		device_remove_file(dev, &dev_attr_family_name);
+		return ret;
+	}
+
+	return 0;
+}
+
+static void alvium_sysfs_rm_dev_info(struct alvium_dev *alvium)
+{
+	struct device *dev = &alvium->i2c_client->dev;
+
+	device_remove_file(dev, &dev_attr_device_guid);
+	device_remove_file(dev, &dev_attr_lane_count);
+	device_remove_file(dev, &dev_attr_device_capabilities);
+	device_remove_file(dev, &dev_attr_serial_number);
+	device_remove_file(dev, &dev_attr_model_name);
+	device_remove_file(dev, &dev_attr_family_name);
+}
+
 /* --------------- Subdev Operations --------------- */
 static int alvium_s_frame_interval(struct v4l2_subdev *sd,
 				   struct v4l2_subdev_state *sd_state,
@@ -2604,6 +2769,12 @@ static int alvium_probe(struct i2c_client *client)
 		goto err_powerdown;
 	}
 
+	ret = alvium_sysfs_add_dev_info(alvium);
+	if (ret) {
+		dev_err_probe(dev, ret, "sysfs_add_dev_info fail\n");
+		goto err_powerdown;
+	}
+
 	/*
 	 * Enable runtime PM without autosuspend:
 	 *
@@ -2634,6 +2805,7 @@ err_subdev:
 err_pm:
 	pm_runtime_disable(dev);
 	pm_runtime_put_noidle(dev);
+	alvium_sysfs_rm_dev_info(alvium);
 	kfree(alvium->alvium_csi2_fmt);
 err_powerdown:
 	alvium_set_power(alvium, false);
@@ -2648,6 +2820,7 @@ static void alvium_remove(struct i2c_client *client)
 	struct device *dev = &alvium->i2c_client->dev;
 
 	v4l2_async_unregister_subdev(sd);
+	alvium_sysfs_rm_dev_info(alvium);
 	alvium_subdev_cleanup(alvium);
 	kfree(alvium->alvium_csi2_fmt);
 	/*
